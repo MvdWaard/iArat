@@ -11,10 +11,17 @@ import sys
 import iArat
 import iArat.utils
 
+'''
+This code processes the data.
+First it finds the chessboard corners and with that the rotation matrix.
+Then the CSV data is reconstructed into 3D data and plotted.
+At the end the kinematics are plotted. The positions of all the joints will be plotted.
+For now the position, velocity and acceleration are commented out, but can be plotted if wanted.
+
+'''
 
 
-
-def data_3D(CSV_data_sam, CSV_data_ipad, Img1_location, Img2_location, chessRow, chessCol):
+def data_3D(CSV_data_sam, CSV_data_ipad, Img1_location, Img2_location, chessRow, chessCol, loadfolder1, loadfolder2):
 
     # Read the CSV file
     with open(CSV_data_sam) as data:
@@ -63,14 +70,28 @@ def data_3D(CSV_data_sam, CSV_data_ipad, Img1_location, Img2_location, chessRow,
 
     img1 = cv2.imread(Img1_location)
     img2 = cv2.imread(Img2_location)
-    shrink = 1
 
-    srcPts, dstPts, P = iArat.utils.chess_corners(img1, img2, chessRow, chessCol)
 
-    # loops over <reconAndFit> so that K and dist best match the plane from <fitPlaneLTSQ>
-    res = scipy.optimize.minimize(iArat.utils.fit_err, P, args=(srcPts, dstPts, chessRow, chessCol), method='Nelder-Mead')
-    # get final points for plot
-    c, normal, XYZ, resid, proj1, proj2 = iArat.utils.reconAndFit(res.x, srcPts, dstPts, chessRow, chessCol) 
+    srcPts, dstPts, P = iArat.utils.chess_corners(img1, img2, chessRow, chessCol,loadfolder1, loadfolder2)
+
+    optimize = input("Use optimization? [y/n]: ")
+
+    if optimize == 'y':
+        print("Optimizing")
+        # loops over <reconAndFit> so that K and dist best match the plane from <fitPlaneLTSQ>
+        resi = scipy.optimize.minimize(iArat.utils.fit_err, P, args=(srcPts, dstPts, chessRow, chessCol), method='Nelder-Mead')
+        # get final points for plot
+        c, normal, XYZ, resid, proj1, proj2 = iArat.utils.reconAndFit(resi.x, srcPts, dstPts, chessRow, chessCol)
+
+    if optimize == 'n':
+        XYZ, proj1, proj2 = iArat.utils.find4Dcorners(srcPts,dstPts,P)
+        c, normal, resid1 = iArat.utils.fitPlaneLTSQ(XYZ)
+
+
+    # # loops over <reconAndFit> so that K and dist best match the plane from <fitPlaneLTSQ>
+    # res = scipy.optimize.minimize(iArat.utils.fit_err, P, args=(srcPts, dstPts, chessRow, chessCol), method='Nelder-Mead')
+    # # get final points for plot
+    # c, normal, XYZ, resid, proj1, proj2 = iArat.utils.reconAndFit(res.x, srcPts, dstPts, chessRow, chessCol) 
 
     x3D, y3D, z3D = XYZ.T
 
@@ -107,26 +128,28 @@ def data_3D(CSV_data_sam, CSV_data_ipad, Img1_location, Img2_location, chessRow,
     #SHOW ROT RESULTS
     fig = plt.figure()
     ax = plt.gca(projection='3d')
-    # ax.plot(x3D, y3D, z3D, 'o')
     ax.plot([0,], [0,], [0,], 'ro')
-    # ax.plot([x3D[-1],], [y3D[-1],], [z3D[-1],], 'yo')
     ax.plot(p3DR[:,0], p3DR[:,1], p3DR[:,2], 'c^')
     ax.set_xlabel('X')
     ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
     iArat.utils.set_axes_equal(ax)
     plt.show()
 
 
+
+    #Find the 4D location of the tracked values from DLC
     XYZ_hand = iArat.utils.find4Dpoints(x_hand_s,y_hand_s,x_hand_i,y_hand_i,proj1,proj2)
     XYZ_wrist = iArat.utils.find4Dpoints(x_wrist_s,y_wrist_s,x_wrist_i,y_wrist_i,proj1,proj2)
     XYZ_elbow = iArat.utils.find4Dpoints(x_elbow_s,y_elbow_s,x_elbow_i,y_elbow_i,proj1,proj2)
     XYZ_shoulder = iArat.utils.find4Dpoints(x_shoulder_s,y_shoulder_s,x_shoulder_i,y_shoulder_i,proj1,proj2)
+    
     #Translate to make 0,0 the first position of the shoulder
-
     XYZ_hand -= XYZ_shoulder[0]
     XYZ_wrist -= XYZ_shoulder[0]
     XYZ_elbow -= XYZ_shoulder[0]
     XYZ_shoulder -= XYZ_shoulder[0]
+    
     #Rotate
     XYZR_hand = np.matmul(XYZ_hand[:,None], R).squeeze()
     XYZR_wrist = np.matmul(XYZ_wrist[:,None], R).squeeze()
@@ -139,83 +162,88 @@ def data_3D(CSV_data_sam, CSV_data_ipad, Img1_location, Img2_location, chessRow,
     XYZR_elbow[:,2] *= -1
     XYZR_shoulder[:,2] *= -1
 
-
-    beg = 0
-    end = len(XYZR_hand)
+    #Set beginning and ending of the showed tracked line (duration)
+    beg1 = 0
+    end1 = len(XYZR_hand)
 
 
     fig = plt.figure()
     ax = plt.gca(projection='3d')
-    ax.plot(XYZR_hand[beg:end,0], XYZR_hand[beg:end,1], XYZR_hand[beg:end,2], 'r')
-    ax.plot(XYZR_wrist[beg:end,0], XYZR_wrist[beg:end,1], XYZR_wrist[beg:end,2], 'b')
-    ax.plot(XYZR_elbow[beg:end,0], XYZR_elbow[beg:end,1], XYZR_elbow[beg:end,2], 'g')
-    ax.plot(XYZR_shoulder[beg:end,0], XYZR_shoulder[beg:end,1], XYZR_shoulder[beg:end,2], 'c')
+    ax.plot(XYZR_hand[beg1:end1,0], XYZR_hand[beg1:end1,1], XYZR_hand[beg1:end1,2], 'r')
+    ax.plot(XYZR_wrist[beg1:end1,0], XYZR_wrist[beg1:end1,1], XYZR_wrist[beg1:end1,2], 'b')
+    ax.plot(XYZR_elbow[beg1:end1,0], XYZR_elbow[beg1:end1,1], XYZR_elbow[beg1:end1,2], 'g')
+    ax.plot(XYZR_shoulder[beg1:end1,0], XYZR_shoulder[beg1:end1,1], XYZR_shoulder[beg1:end1,2], 'c')
     ax.scatter(p3DR[:,0], p3DR[:,1], p3DR[:,2], 'c^', s=2)
 
     # ax.plot(XYZ_hand[:,0], XYZ_hand[:,1], XYZ_hand[:,2], 'ro')
     ax.set_xlabel('X')
     ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
     iArat.utils.set_axes_equal(ax)
     plt.show()
 
-    '''
-    #######################
 
-    NEEDS FILTER BEFORE FINDING THE VELOCITY AND ACCELERATION
+    PVA_hand = iArat.utils.PosVelAcc(XYZR_hand)
+    PVA_wrist = iArat.utils.PosVelAcc(XYZR_wrist)
+    PVA_elbow = iArat.utils.PosVelAcc(XYZR_elbow)
+    PVA_shoulder = iArat.utils.PosVelAcc(XYZR_shoulder)
 
-    #########################
+    #Set beginning and ending of the plots
+    beg2 = 10
+    end2 = len(PVA_hand)-40
 
-    '''
-    #FIND POSITION, SPEED AND ACC IN X,Y,Z:
-    def PosVelAcc(XYZR):
-        pos_x = XYZR[:,0]
-        pos_y = XYZR[:,1]
-        pos_z = XYZR[:,2]
-        pos = np.column_stack([pos_x,pos_y,pos_z])
-        
-        vel_x = np.diff(pos_x)
-        vel_y = np.diff(pos_y)
-        vel_z = np.diff(pos_z)
-        vel = np.column_stack([vel_x,vel_y,vel_z])
-        vel = np.insert(vel,0,0,axis=0)
-
-        acc_x = np.diff(vel_x)
-        acc_y = np.diff(vel_y)
-        acc_z = np.diff(vel_z)
-        acc = np.column_stack([acc_x,acc_y,acc_z])
-        acc = np.insert(acc,0,0,axis=0)
-        acc = np.insert(acc,0,0,axis=0)
-
-        PVA = np.column_stack([pos,vel,acc])
-
-        return PVA
-
-    PVA_hand = PosVelAcc(XYZR_hand)
-    PVA_wrist = PosVelAcc(XYZR_wrist)
-    PVA_elbow = PosVelAcc(XYZR_elbow)
-    PVA_shoulder = PosVelAcc(XYZR_shoulder)
-
-
+    #Create time vector
     freq = 1/25
-    t = np.arange(0,len(XYZR_hand)*freq,freq)
+    t = np.arange(0,(end2-beg2)*freq,freq)
 
-    plt.subplot(331)
-    plt.plot(t,PVA_hand[beg:end,0])
-    plt.subplot(332)
-    plt.plot(t,PVA_hand[beg:end,1])
-    plt.subplot(333)
-    plt.plot(t,PVA_hand[beg:end,2])
-    plt.subplot(334)
-    plt.plot(t,PVA_hand[beg:end,3])
-    plt.subplot(335)
-    plt.plot(t,PVA_hand[beg:end,4])
-    plt.subplot(336)
-    plt.plot(t,PVA_hand[beg:end,5])
-    plt.subplot(337)
-    plt.plot(t,PVA_hand[beg:end,6])
-    plt.subplot(338)
-    plt.plot(t,PVA_hand[beg:end,7])
-    plt.subplot(339)
-    plt.plot(t,PVA_hand[beg:end,8])
+    #Plot the position of the hand, wrist, elbow and shoulder in a 3x4 plot
+    f,ax = plt.subplots(3,4)
+    ax[0,0].plot(t,PVA_hand[beg2:end2,1],'r')
+    ax[0,0].set_title('Hand')
+    ax[0,0].set_ylabel('y-pos')
+    ax[1,0].plot(t,-PVA_hand[beg2:end2,0],'r')
+    ax[1,0].set_ylabel('x-pos')
+    ax[2,0].plot(t,PVA_hand[beg2:end2,2],'r')
+    ax[2,0].set_ylabel('z-pos')
+
+    ax[0,1].plot(t,PVA_wrist[beg2:end2,1],'b')
+    ax[0,1].set_title('Wrist')
+    ax[1,1].plot(t,-PVA_wrist[beg2:end2,0],'b')
+    ax[2,1].plot(t,PVA_wrist[beg2:end2,2],'b')
+
+    ax[0,2].plot(t,PVA_elbow[beg2:end2,1],'g')
+    ax[0,2].set_title('Elbow')
+    ax[1,2].plot(t,PVA_elbow[beg2:end2,0],'g')
+    ax[2,2].plot(t,PVA_elbow[beg2:end2,2],'g')
+
+    ax[0,3].plot(t,PVA_shoulder[beg2:end2,1],'c')
+    ax[0,3].set_title('Shoulder')
+    ax[1,3].plot(t,PVA_shoulder[beg2:end2,0],'c')
+    ax[2,3].plot(t,PVA_shoulder[beg2:end2,2],'c')
+
+
+
+
+    #This plots the position, velocity and acceleration of the hand only in a 3x3 plot
+    # figure = plt.figure()
+    # plt.subplot(334)
+    # plt.plot(t,PVA_hand[beg2:end2,0])
+    # plt.subplot(331)
+    # plt.plot(t,PVA_hand[beg2:end2,1])
+    # plt.subplot(337)
+    # plt.plot(t,PVA_hand[beg2:end2,2])
+    # plt.subplot(335)
+    # plt.plot(t,PVA_wrist[beg2:end2,0])
+    # plt.subplot(332)
+    # plt.plot(t,PVA_wrist[beg2:end2,1])
+    # plt.subplot(338)
+    # plt.plot(t,PVA_wrist[beg2:end2,2])
+    # plt.subplot(336)
+    # plt.plot(t,PVA_elbow[beg2:end2,0])
+    # plt.subplot(333)
+    # plt.plot(t,PVA_elbow[beg2:end2,1])
+    # plt.subplot(339)
+    # plt.plot(t,PVA_elbow[beg2:end2,2])
+
 
     plt.show()

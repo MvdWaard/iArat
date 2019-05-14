@@ -138,3 +138,10 @@ def fit_err(p, srcPts, dstPts, chessRow, chessCol):
 
 	return resid
 
+def smooth(y, filterorder):
+	'''
+	Simple moving average filter that is used for smoothening the data
+	'''
+	box = np.ones(filterorder)/filterorder
+	y_smooth = np.convolve(y, box, mode='same')
+	return y_smooth

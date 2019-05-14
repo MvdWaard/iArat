@@ -9,9 +9,14 @@ import sys
 
 import iArat.utils
 
+'''
+This code uses a calibration video and a calibration image to find a good match of calibration images.
+This is done by extracting random frames from the video and reconstructiong the chessboard.
+The code asks for optimization.
+At the end, the reconstructed chessboard is shown and may be accepted or not.
+'''
 
-
-def findframes(Cal_img1_location, Cal_vid_location, Cal_vid, chessRow, chessCol, Nr_of_frames):
+def findframes(Cal_img1_location, Cal_vid_location, Cal_vid, chessRow, chessCol, Nr_of_frames,loadfolder1, loadfolder2):
 
 	img1 = cv2.imread(Cal_img1_location)
 	vidcap = cv2.VideoCapture(Cal_vid_location + "\\" + Cal_vid)
@@ -47,7 +52,7 @@ def findframes(Cal_img1_location, Cal_vid_location, Cal_vid, chessRow, chessCol,
 
 		img2 = cv2.imread(Cal_vid_location + "\\Cal_%d.jpg" % ex_frame)
 
-		srcPts, dstPts, P = iArat.utils.chess_corners(img1, img2, chessRow, chessCol)
+		srcPts, dstPts, P = iArat.utils.chess_corners(img1, img2, chessRow, chessCol,loadfolder1, loadfolder2)
 
 		if optimize == 'y':
 			print("Optimizing")

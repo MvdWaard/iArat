@@ -9,9 +9,15 @@ import matplotlib.pyplot as plt
 This function uses the CSV data from deeplabcut to create an image that shows the tracked positions of a certain amount of frames
 Input the CSV data location and the location of the corresponding video. Then choose the length of the tracking and which frame.
 
-If the tracking is off, check the res (is hard coded). If the DLC video is scaled before training, the CVS data is also scaled as it is in pixels.
+If the tracking is off, check the resolution of the video that is used for the tracking and the video for getting the CVS (res is hard coded). If the DLC video is scaled before training, the CVS data is also scaled as it is in pixels.
 When then drawing the data back on the unscaled video gives wrong results. 
 
+Inputs:
+- Location of the CSV data
+- Location of the Video
+- Directory in which the image frame is saved
+- The length of the tracked line in frames
+- The end frame of the tracked line
 
 '''
 
@@ -69,10 +75,11 @@ def line_tracked_image(CSV_data, Tracked_vid,working_dir, track_length, tracked_
 
 
 	#Reading image:
-	img1 = cv2.imread("frame%d.jpg" % tracked_frame)
+	img1 = cv2.imread(working_dir+"/frame%d.jpg" % tracked_frame)
 	RGB_img = cv2.cvtColor(img1, cv2.COLOR_BGR2RGB)
 
 	#Plotting the tracking lines:
+	fig = plt.figure()
 	plt.imshow(RGB_img)
 	if tracked_frame < 2:
 		print("Take a frame that is later than the 2nd one")

@@ -8,19 +8,16 @@ Make sure to use the correct number of rows and columns
 
 '''
 
-def chess_corners(img1, img2, chessRow, chessCol):
+def chess_corners(img1, img2, chessRow, chessCol, loadfolder1, loadfolder2):
 	
 	criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
 
-	#SET WORKSPACE AND LOAD INITIAL MATRICES AND VECTORS
-	loadfolder1 = "C:\\Users\\Beheerder\\Documents\\_UT\\Internship\\Calibration\\Cal_Samsung"
-	loadfolder2 = "C:\\Users\\Beheerder\\Documents\\_UT\\Internship\\Calibration\\Cal_ipad"
-	#vo
+	# #SET WORKSPACE AND LOAD INITIAL MATRICES AND VECTORS
 	K1 = np.loadtxt(loadfolder1+"/cameraMatrix.txt", delimiter=",")
 	K2 = np.loadtxt(loadfolder2+"/cameraMatrix.txt", delimiter=",")
-	shrink = 1
-	K1[0][0], K1[1][1], K1[0][2], K1[1][2] = K1[0][0]*shrink, K1[1][1]*shrink, K1[0][2]*shrink, K1[1][2]*shrink
-	K2[0][0], K2[1][1], K2[0][2], K2[1][2] = K2[0][0]*shrink, K2[1][1]*shrink, K2[0][2]*shrink, K2[1][2]*shrink
+
+	K1[0][0], K1[1][1], K1[0][2], K1[1][2] = K1[0][0], K1[1][1], K1[0][2], K1[1][2]
+	K2[0][0], K2[1][1], K2[0][2], K2[1][2] = K2[0][0], K2[1][1], K2[0][2], K2[1][2]
 	dist1 = np.loadtxt(loadfolder1+"/cameradistortion.txt", delimiter=",")
 	dist2 = np.loadtxt(loadfolder2+"/cameradistortion.txt", delimiter=",")
 	P = np.hstack([K1[0, 0], K1[0, 2], K1[1, 1], K1[1, 2], K2[0, 0], K2[0, 2], K2[1, 1], K2[1, 2], dist1, dist2])
@@ -40,19 +37,19 @@ def chess_corners(img1, img2, chessRow, chessCol):
 
 	#REFINE CORNERS
 	if found1 is True and found2 is True:
-	    cornersRefined1 = cv2.cornerSubPix(imgGray1, corners1, (11, 11), (-1, -1), criteria)
-	    cornersRefined2 = cv2.cornerSubPix(imgGray2, corners2, (11, 11), (-1, -1), criteria)
-	    img1 = cv2.drawChessboardCorners(img1, (chessCol, chessRow), cornersRefined1, found1)
-	    img2 = cv2.drawChessboardCorners(img2, (chessCol, chessRow), cornersRefined2, found2)   
-	    cv2.namedWindow('img1', cv2.WINDOW_NORMAL), cv2.namedWindow('img2', cv2.WINDOW_NORMAL)
-	    cv2.resizeWindow('img1', 800, 800)
-	    cv2.resizeWindow('img2', 800, 800)
-	    cv2.imshow('img1', img1) # display labelled images
-	    cv2.imshow('img2', img2)
-	    cv2.waitKey(0)
-	    cv2.destroyAllWindows()
+		cornersRefined1 = cv2.cornerSubPix(imgGray1, corners1, (11, 11), (-1, -1), criteria)
+		cornersRefined2 = cv2.cornerSubPix(imgGray2, corners2, (11, 11), (-1, -1), criteria)
+		img1 = cv2.drawChessboardCorners(img1, (chessCol, chessRow), cornersRefined1, found1)
+		img2 = cv2.drawChessboardCorners(img2, (chessCol, chessRow), cornersRefined2, found2)   
+		cv2.namedWindow('img1', cv2.WINDOW_NORMAL), cv2.namedWindow('img2', cv2.WINDOW_NORMAL)
+		cv2.resizeWindow('img1', 960, 540)
+		cv2.resizeWindow('img2', 960, 540)
+		cv2.imshow('img1', img1) # display labelled images
+		cv2.imshow('img2', img2)
+		cv2.waitKey(0)
+		cv2.destroyAllWindows()
 	else:
-	    print('Please use another image')
+		print('Please use another image')
 
 	srcPts = cornersRefined1
 	dstPts = cornersRefined2
